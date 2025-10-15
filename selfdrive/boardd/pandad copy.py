@@ -5,16 +5,13 @@ import usb1
 import time
 import subprocess
 from typing import List, NoReturn
-import cereal.messaging as messaging  
-from cereal import log, car 
 from functools import cmp_to_key
-from panda import Panda, PandaDFU  
-from common.params import Params  
-from system.swaglog import cloudlog
-from common.basedir import BASEDIR
-from system.hardware import HARDWARE 
-from selfdrive.car import scale_tire_stiffness 
 
+from panda import Panda, PandaDFU
+from common.basedir import BASEDIR
+from common.params import Params
+from system.hardware import HARDWARE
+from system.swaglog import cloudlog
 
 
 def get_expected_signature(panda: Panda) -> bytes:
@@ -77,51 +74,10 @@ def panda_sort_cmp(a: Panda, b: Panda):
   # last resort: sort by serial number
   return a.get_usb_serial() < b.get_usb_serial()
 
-def publish_simulated_panda_states():       
-  cloudlog.warning("publish_simulated_panda_states...")  
-  
-  # 设置完整的 CarParams 
-    
-  cp = car.CarParams.new_message()  
-  cp.carName = "mock"  
-    
-  # 设置车辆物理参数（参考 mock interface）  
-  cp.mass = 1700.  
-  cp.wheelbase = 2.70  
-  cp.centerToFront = cp.wheelbase * 0.5  
-  cp.steerRatio = 13.  
-  cp.tireStiffnessFront = 1e6   # 非常硬以忽略侧滑  
-  cp.tireStiffnessRear = 1e6    # 非常硬以忽略侧滑  
-    
-  # 设置安全配置  
-  safety_config = car.CarParams.SafetyConfig.new_message()  
-  safety_config.safetyModel = car.CarParams.SafetyModel.noOutput  
-  cp.safetyConfigs = [safety_config]  
-  
-  params = Params() 
-  params.put("CarParams", cp.to_bytes())   
-  params.put_bool("FirmwareQueryDone", True)  
-  params.put_bool("ControlsReady", True)  
-      
-  pm = messaging.PubMaster(['pandaStates']) 
-       
-  while True:  
-    msg = messaging.new_message('pandaStates', 1)  
-    msg.pandaStates[0].ignitionLine = True  
-    msg.pandaStates[0].ignitionCan = True  
-    msg.pandaStates[0].controlsAllowed = True  
-    msg.pandaStates[0].pandaType = log.PandaState.PandaType.uno  
-    msg.pandaStates[0].safetyModel = car.CarParams.SafetyModel.noOutput  
-    msg.pandaStates[0].safetyParam = 0  
-    msg.pandaStates[0].harnessStatus = log.PandaState.HarnessStatus.normal  
-    pm.send('pandaStates', msg)  
-    time.sleep(0.1)    
-        
+
 def main() -> NoReturn:
   first_run = True
   params = Params()
-  no_panda_count = 0  
-  MAX_NO_PANDA_RETRIES = 1
 
   while True:
     try:
@@ -135,18 +91,11 @@ def main() -> NoReturn:
 
       panda_serials = Panda.list()
       if len(panda_serials) == 0:
-        no_panda_count += 1  
-        cloudlog.info(f"No pandas found, attempt {no_panda_count}/{MAX_NO_PANDA_RETRIES}") 
-        if no_panda_count >= MAX_NO_PANDA_RETRIES:  
-          cloudlog.warning("Ready To Sim Panda...")  
-          publish_simulated_panda_states()
         if first_run:
           cloudlog.info("Resetting internal panda")
           HARDWARE.reset_internal_panda()
           time.sleep(2)  # wait to come back up
         continue
-        
-      no_panda_count = 0
 
       cloudlog.info(f"{len(panda_serials)} panda(s) found, connecting - {panda_serials}")
 

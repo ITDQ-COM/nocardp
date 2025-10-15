@@ -206,6 +206,11 @@ class NativeProcess(ManagerProcess):
 
     if self.proc is not None:
       return
+      
+    # 特殊处理 camerad：启动前设置 IsOffroad=True  
+    if self.name == 'camerad':  
+      from common.params import Params  
+      Params().put_bool("IsOffroad", True) 
 
     cwd = os.path.join(BASEDIR, self.cwd)
     cloudlog.info(f"starting process {self.name}")

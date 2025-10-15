@@ -58,7 +58,7 @@ class WaitTimeHelper:
 
 
 def run(cmd: List[str], cwd: Optional[str] = None) -> str:
-  return subprocess.check_output(cmd, cwd=cwd, stderr=subprocess.STDOUT, encoding='utf8')
+  return subprocess.check_output(cmd, cwd=cwd, stderr=subprocess.STDOUT, encoding='utf8', errors='replace')
 
 
 def set_consistent_flag(consistent: bool) -> None:

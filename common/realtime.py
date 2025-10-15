@@ -35,8 +35,12 @@ def set_realtime_priority(level: int) -> None:
 
 
 def set_core_affinity(cores: List[int]) -> None:
-  if not PC:
-    os.sched_setaffinity(0, cores)  # pylint: disable=no-member
+  if not PC:  
+    try:  
+      os.sched_setaffinity(0, cores)  # pylint: disable=no-member  
+    except OSError as e:  
+      from system.swaglog import cloudlog  
+      cloudlog.warning(f"Failed to set CPU affinity to {cores}: {e}")
 
 
 def config_realtime_process(cores: Union[int, List[int]], priority: int) -> None:

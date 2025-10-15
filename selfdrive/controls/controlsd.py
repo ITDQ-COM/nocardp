@@ -61,7 +61,7 @@ ENABLED_STATES = (State.preEnabled, *ACTIVE_STATES)
 
 class Controls:
   def __init__(self, sm=None, pm=None, can_sock=None, CI=None):
-    config_realtime_process(4 if TICI else 3, Priority.CTRL_HIGH)
+    #config_realtime_process(4 if TICI else 3, Priority.CTRL_HIGH)
 
     # Ensure the current branch is cached, otherwise the first iteration of controlsd lags
     self.branch = get_short_branch("")
@@ -291,6 +291,7 @@ class Controls:
     """Compute carEvents from carState"""
 
     self.events.clear()
+    
 
     # Add startup event
     if self.startup_event is not None:
@@ -301,7 +302,17 @@ class Controls:
     if not self.initialized:
       self.events.add(EventName.controlsInitializing)
       return
-
+      
+    cloudlog.warning("fcw...")
+    cloudlog.warning(self.read_only)
+    
+    # Check for FCW
+    stock_long_is_braking = self.enabled and not self.CP.openpilotLongitudinalControl and CS.aEgo < -1.25
+    model_fcw = self.sm['modelV2'].meta.hardBrakePredicted and not CS.brakePressed and not stock_long_is_braking
+    planner_fcw = self.sm['longitudinalPlan'].fcw and self.enabled
+    if planner_fcw or model_fcw:
+      self.events.add(EventName.fcw)
+      
     # no more events while in dashcam mode
     if self.read_only:
       return
